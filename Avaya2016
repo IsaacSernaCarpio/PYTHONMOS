@@ -1,0 +1,188 @@
+#!/usr/bin/python
+# *-* coding: iso-8859-1 *-*
+import pexpect
+import time,sys
+
+class ClsAvayaApp:
+	# variables por identificar.
+	
+	def ClsAvayaApp(self):
+		print 'metodo vacio'
+	
+	def Proceso(self):
+			
+		try:#inicia el proceso con la lectura del archivo
+			Path ='DATOS/DATOS.CSV'	# Path de donde se toman los datos.
+			Datos = []  				# Aqui se almacenaran los codigos.
+			with open(Path,'r') as f:  	# Abre archivo de codigos y lo deja en el array lista Datos.
+				for line in f:
+					Datos.append([str(n) for n in line.strip().split(',')])
+			f.close()
+		except Exception, e:
+			if "Is a directory" in e:
+				print 'la direcion(path) no es correcta'
+				return
+			print 'Error en Lectura de archivo:\n %s' % e	
+			return
+		
+		try:# Conexión al Avaya
+			telconn = pexpect.spawn('telnet 192.168.3.82')
+			time.sleep(2)
+			telconn.logfile = sys.stdout
+			telconn.expect(":")
+			time.sleep(2)
+			telconn.send("admin" + "\r")
+			telconn.expect(":")
+			telconn.send("admin01" + "\r")
+			telconn.send("\r\n")
+			time.sleep(3)
+			telconn.expect(">")
+			time.sleep(2)
+			telconn.send("sat" + "\r")
+			telconn.expect("]")
+			time.sleep(2)
+			telconn.send("w2ktt" + "\r")
+			telconn.expect(":")
+			time.sleep(1)
+			print 
+			try:
+				for fila in Datos:
+					# Declaramos variables locales para manipular los datos
+					noFila 	= fila[0]
+					ext		= fila[1]
+					extNew	= fila[2]
+					modelo 	= fila[3]
+					tipoMod	= fila[4]
+					codigo	= fila[5]
+					codiNew	= fila[6]
+					cor		= fila[7]
+					desCor	= fila[8]
+					nombre	= fila[9]
+					
+					if noFila == "1": 	# Cambio Descripcion Del COR (COR-DES)
+						try:
+							telconn.send("change cor " + cor + "\r")
+							telconn.send(desCor + "\r")
+							telconn.send('\x1B\x65'+ "\r")
+							time.sleep(3)
+						except Exception, e:
+							print 'Cambio Descripcion Del COR:\n %s' % e	
+							return
+						
+															
+					elif noFila == "2": # Cambio En Extension El Nombre y CORS (EXT-NOM-COR)
+						try:
+							x = "X"	
+							telconn.send("change station " + ext + "\r")
+							telconn.send("\r")
+							telconn.send(x + "\r")
+							telconn.send(nombre + "\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send(cor + "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Cambio En Extension El Nombre y CORS:\n %s' % e	
+							return		
+						
+						
+					elif noFila == "3": # Agregar(Nueva) Extension, Nombre y el COR (EXT-NOM-COR)
+						try:
+							x = "X"	
+							telconn.send("add station " + ext + "\r")
+							telconn.send("\r")
+							telconn.send(x + "\r")
+							telconn.send(nombre + "\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send(cor + "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Agregar(Nueva) Extension, Nombre y el COR:\n %s' % e	
+							return		
+						
+						
+					elif noFila == "4": # Eliminar Extension
+						try:	
+							telconn.send("remove station " + ext + "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Eliminar Extension, Nombre y el COR:\n %s' % e	
+							return								
+						
+					elif noFila == "5": # Cambio de Codigo de Autorizacion y CORS
+						try:	
+							telconn.send("change authorization-code " + codigo + "\r") 
+							telconn.send(codiNew + "\r")
+							telconn.send(cor+ "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Cambio de de Codigo de Autorizacion y CORS:\n %s' % e	
+							return		
+						
+					elif noFila == "6": # Agregar Codigo de Autorizacion y CORS
+						try:
+							tren 	= 4					# Maximo Numero de Tren de Codigos
+							conTren = 0					# Contador De Las Vueltas En El Ciclo
+							axuTren = "9"				# Variable Que Va A Ir Almacenando Los Digitos Maximos
+							while conTren < tren:
+								conTren = conTren + 1
+								if conTren == tren:	# cuando ya sea el string que quiero ps que siga
+									continue
+								axuTren = axuTren + "9"
+								
+							telconn.send("change authorization-code " + axuTren + "\r")
+							telconn.send("\r")
+							telconn.send("\r")
+							telconn.send( codigo + "\r")
+							telconn.send(cor + "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Agregar Codigo de Autorizacion y CORS:\n %s' % e	
+							return
+						
+					elif noFila == "7": # Elimina Codigo de Autorizacion y CORS
+						try:
+							tren 	= 4					# Maximo Numero de Tren de Codigos
+							conTren = 0					# Contador De Las Vueltas En El Ciclo
+							axuTren = "0"				# Variable Que Va A Ir Almacenando Los Digitos Maximos
+							while conTren < tren:
+								conTren = conTren + 1
+								if conTren == tren:	# cuando ya sea el string que quiero ps que siga
+									continue
+								axuTren = axuTren + "0"
+								
+							telconn.send("change authorization-code " + codigo + "\r")
+							telconn.send( axuTren + "\r")
+							telconn.send("0" + "\r")
+							telconn.send('\x1B\x65')
+							time.sleep(3)
+						except Exception, e:
+							print 'Error En Agregar Codigo de Autorizacion y CORS:\n %s' % e	
+							return
+					else:
+						print noFila,ext,extNew, modelo, tipoMod, codigo, cor, desCor, nombre
+						
+						
+			except Exception, e:
+				print 'Error En Datos:\n %s' % e	
+				return	
+		except Exception, e:
+			print 'Error En Conexion:\n %s' % e	
+			return
+
+obj = ClsAvayaApp()
+obj.Proceso();
